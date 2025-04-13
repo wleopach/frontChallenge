@@ -2,19 +2,27 @@ import React, { useState } from "react";
 import {
     VStack,
     Button,
-    Box,
-    Text,
-    Heading,
+    For,
+    createListCollection,
+    Card,
 } from "@chakra-ui/react";
 import {
     SelectRoot,
     SelectContent,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValueText,
 } from "@/components/ui/select";
-import { createListCollection } from "@ark-ui/react/collection";
 
+import axios from "axios";
+
+const api = axios.create({
+    baseURL: "https://demo-1-684881852527.us-central1.run.app",
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
 const options = createListCollection({
     items: [
         {label:   'American Airlines'       , value : 'American Airlines'       },
@@ -45,19 +53,18 @@ const options = createListCollection({
 
 const options2 = createListCollection({
     items: [
-        {label:"Enero",   value: 1 },
-        {label:"Febrero", value: 2 },
-        {label:"Marzo",   value: 3},
-        {label:"Abril",   value: 4 },
-        {label:"Mayo" ,   value: 5 },
-        {label:"Junio",   value: 6},
-        {label:"Julio",   value: 7 },
-        {label:"Agosto",  value: 8 },
-        {label:"Septiembre", value: 9 },
-        {label:"Octubre", value: 10 },
-        {label:"Noviembre", value: 11 },
-        {label:"Diciembre", value: 12},
-        // Add rest...
+        {label:"Enero",   value: "1" },
+        {label:"Febrero", value: "2" },
+        {label:"Marzo",   value: "3"},
+        {label:"Abril",   value: "4" },
+        {label:"Mayo" ,   value: "5" },
+        {label:"Junio",   value: "6"},
+        {label:"Julio",   value: "7" },
+        {label:"Agosto",  value: "8" },
+        {label:"Septiembre", value: "9" },
+        {label:"Octubre", value: "10" },
+        {label:"Noviembre", value: "11" },
+        {label:"Diciembre", value: "12"},
     ],
 });
 
@@ -85,50 +92,78 @@ const stores = [{ id: 1 }];
 
 const FeatureSelector = () => {
     const [selections, setSelections] = useState({});
-
     const handleSelectChange = (storeId, feature, value) => {
         setSelections((prev) => ({
             ...prev,
             [storeId]: {
                 ...prev[storeId],
-                [feature]: { value },
+                [feature]: value,
             },
         }));
     };
 
-    const handleSubmit = () => {
-        console.log("Selections:", selections);
+    // Function to send selected data to the API
+    const handleSubmit = async () => {
+        const payload = {
+            flights: stores.map((store) => ({
+                OPERA: selections[store.id]?.opera?.value[0] || "Avianca" ,
+                MES: +selections[store.id]?.mes?.value[0] || 1,
+                TIPOVUELO: selections[store.id]?.tipo?.value[0] || "N",
+            })),
+        };
+
+        console.log("Payload to be sent:", JSON.stringify(payload, null, 2));
+
+        try {
+            const response = await api.post("/predict", payload);
+            console.log(response.data.predict);
+
+            // Redirect to StorePredictions with props
+            // navigate("/store-predictions", { state: { stores, predictions: response.data.predict } });
+
+        } catch (error) {
+            console.error("Error submitting data:", error);
+            alert("Failed to connect to the prediction service");
+        }
     };
 
     return (
         <VStack spacing={4} align="stretch">
             {stores.map((store) => (
-                <Box key={store.id} p={4} borderWidth="1px" borderRadius="lg">
-                    <Heading size="sm">ID del vuelo: {store.id}</Heading>
-                    {features.map((feature) => (
-                        <SelectRoot
-                            key={feature}
-                            field={feature}
-                            collection={renderOptions[feature]}
-                            value={selections[store.id]?.[feature]?.value || ""}
-                            onValueChange={(value) => handleSelectChange(store.id, feature, value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValueText placeholder={`Seleccionar ${renderNames[feature]}`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {renderOptions[feature].items.map((option) => (
-                                    <SelectItem item={option} key={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </SelectRoot>
-                    ))}
-                </Box>
+                <Card.Root width="320px" key={store.id}>
+
+                    <Card.Body>
+                        <Card.Title>ID del vuelo: {store.id}</Card.Title>
+
+                        <For each={features}>
+                            {(feature) => (
+                                <SelectRoot
+                                    key={feature}
+                                    field={feature}
+                                    collection={renderOptions[feature]}
+                                    value={selections[store.id]?.[feature]?.value || ""}
+                                    onValueChange={(value) => handleSelectChange(store.id, feature, value)}
+                                >
+                                    <SelectLabel>{renderNames[feature]}</SelectLabel>
+                                    <SelectTrigger>
+                                        <SelectValueText placeholder="Seleccionar opción"/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {renderOptions[feature].items.map((option) => (
+                                            <SelectItem item={option} key={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </SelectRoot>
+                            )}
+                        </For>
+
+                    </Card.Body>
+                </Card.Root>
             ))}
 
-            <Button colorScheme="blue" onClick={handleSubmit}>
+            <Button colorScheme="blue" color="blue" onClick={handleSubmit}>
                 Predecir
             </Button>
         </VStack>
