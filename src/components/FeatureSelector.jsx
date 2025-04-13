@@ -17,6 +17,9 @@ import {
 
 import axios from "axios";
 
+import { useSnapshot } from "valtio";
+import state from "../context";
+import { useNavigate } from "react-router-dom";
 const api = axios.create({
     baseURL: "https://demo-1-684881852527.us-central1.run.app",
     headers: {
@@ -88,15 +91,17 @@ const renderOptions = {
     tipo: options3,
 };
 
-const stores = [{ id: 1 }];
+const flights = [{ id: 1 }];
 
 const FeatureSelector = () => {
+    const snap = useSnapshot(state);
+    const navigate = useNavigate();
     const [selections, setSelections] = useState({});
-    const handleSelectChange = (storeId, feature, value) => {
+    const handleSelectChange = (flightId, feature, value) => {
         setSelections((prev) => ({
             ...prev,
-            [storeId]: {
-                ...prev[storeId],
+            [flightId]: {
+                ...prev[flightId],
                 [feature]: value,
             },
         }));
@@ -105,10 +110,10 @@ const FeatureSelector = () => {
     // Function to send selected data to the API
     const handleSubmit = async () => {
         const payload = {
-            flights: stores.map((store) => ({
-                OPERA: selections[store.id]?.opera?.value[0] || "Avianca" ,
-                MES: +selections[store.id]?.mes?.value[0] || 1,
-                TIPOVUELO: selections[store.id]?.tipo?.value[0] || "N",
+            flights: flights.map((flight) => ({
+                OPERA: selections[flight.id]?.opera?.value[0] || "Avianca" ,
+                MES: +selections[flight.id]?.mes?.value[0] || 1,
+                TIPOVUELO: selections[flight.id]?.tipo?.value[0] || "N",
             })),
         };
 
@@ -116,24 +121,48 @@ const FeatureSelector = () => {
 
         try {
             const response = await api.post("/predict", payload);
-            console.log(response.data.predict);
+            // Log the entire response data to see its structure
+            console.log("Complete response:", response.data);
+            const predictions = response.data.predict;
 
-            // Redirect to StorePredictions with props
-            // navigate("/store-predictions", { state: { stores, predictions: response.data.predict } });
+            // Check if predictions exists and has the expected structure
+            if (predictions && Array.isArray(predictions)) {
+                // If predictions is already an array
+                state.content = predictions.map((pred, index) => ({
+                    opera: payload.flights[index].OPERA,
+                    mes: payload.flights[index].MES,
+                    tipo: payload.flights[index].TIPOVUELO,
+                    pred: pred
+                }));
+                navigate("/predictions");
+            } else if (predictions && Array.isArray(predictions.items)) {
+                // If predictions has an items array
+                state.content = predictions.items.map((pred, index) => ({
+                    opera: payload.flights[index].OPERA,
+                    mes: payload.flights[index].MES,
+                    tipo: payload.flights[index].TIPOVUELO,
+                    pred: pred
+                }));
+                navigate("/predictions");
 
+            } else {
+                // Handle unexpected response structure
+                console.error("Unexpected response format:", predictions);
+                state.content = [];
+            }
         } catch (error) {
-            console.error("Error submitting data:", error);
-            alert("Failed to connect to the prediction service");
+            console.error("Error making prediction:", error);
+            state.content = [];
         }
     };
 
     return (
         <VStack spacing={4} align="stretch">
-            {stores.map((store) => (
-                <Card.Root width="320px" key={store.id}>
+            {flights.map((flight) => (
+                <Card.Root width="320px" key={flight.id}>
 
                     <Card.Body>
-                        <Card.Title>ID del vuelo: {store.id}</Card.Title>
+                        <Card.Title>ID del vuelo: {flight.id}</Card.Title>
 
                         <For each={features}>
                             {(feature) => (
@@ -141,8 +170,8 @@ const FeatureSelector = () => {
                                     key={feature}
                                     field={feature}
                                     collection={renderOptions[feature]}
-                                    value={selections[store.id]?.[feature]?.value || ""}
-                                    onValueChange={(value) => handleSelectChange(store.id, feature, value)}
+                                    value={selections[flight.id]?.[feature]?.value || ""}
+                                    onValueChange={(value) => handleSelectChange(flight.id, feature, value)}
                                 >
                                     <SelectLabel>{renderNames[feature]}</SelectLabel>
                                     <SelectTrigger>

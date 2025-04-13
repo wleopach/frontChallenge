@@ -1,6 +1,7 @@
 import './App.css'
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import FeatureSelector from "./components/FeatureSelector.jsx";
+import FeatureSelector from "./components/FeatureSelector";
+import PredictionMessage from "./components/PredictionMessage";
 function App() {
 
     return (
@@ -8,6 +9,7 @@ function App() {
            <Router>
                <Routes>
                    <Route path="/" element={<FeatureSelector/>} />
+                   <Route path="/predictions" element={<PredictionMessage/>} />
                </Routes>
            </Router>
        </>
